@@ -1,11 +1,19 @@
-name: Docker Develop Release
+name: Docker Build
 
 on:
+  # Run on pushes to these branches, but only if they contain changes
+  # to at least one file other than README.md or in .github/
   push:
-    branches: [ dev ]
+    branches:
+      - dev
+      - master
     paths-ignore:
       - '**/README.md'
       - '**/.github/**'
+  # Also run on released published via the GitHub Web App (see "Releases").
+  # Releases create git tags, so this workflow will have the relevant tag info too.
+  release:
+    types: [published]
 
 jobs:
 
@@ -43,7 +51,13 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/userscripts
             ghcr.io/drazzilb08/userscripts
           tags: |
-            type=raw,value=dev
+            # Tag 'dev' on the dev branch only
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+
+            # Tag versioned releases, e.g. 'v0.1.11'.
+            # {{version}} is shorthand for {{major}}.{{minor}}.{{patch}} (can include pre-release).
+            # Also tags 'latest' (i.e. latest versioned release).
+            type=semver,pattern={{version}}
 
       - name: Build and push
         id: docker_build
@@ -53,7 +67,9 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           build-args: |
-            "BRANCH=dev"
-          push: true
+            # If a versioned release, use the version tag; otherwise use the branch name.
+            "BRANCH=${{ github.event_name == 'release' && steps.meta.outputs.version || vars.GITHUB_REF_NAME }}"
+          # Build, but don't actually push docker images on open pull requests.
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
