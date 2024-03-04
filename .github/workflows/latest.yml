@@ -6,19 +6,15 @@ on:
     paths-ignore:
       - '**/README.md'
       - '**/.github/**'
-  pull_request:
-    types:
-      - closed
-    branches:
-      - master
-    paths-ignore:
-      - '**/README.md'
-      - '**/.github/**'
 
 jobs:
 
   docker-latest:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout
@@ -36,8 +32,19 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GH_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKER_USERNAME }}/userscripts
+            ghcr.io/drazzilb08/userscripts
+          tags: |
+            type=raw,value=latest
+
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v5
@@ -48,6 +55,5 @@ jobs:
           build-args: |
             "BRANCH=${{ vars.GITHUB_REF_NAME }}"
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/userscripts:latest
-            ghcr.io/drazzilb08/userscripts:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
