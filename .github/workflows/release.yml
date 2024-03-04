@@ -1,0 +1,42 @@
+name: Draft Release
+
+on:
+  # Run only for commits on dev or master branches
+  # that modified the VERSION file
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - VERSION
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Allow this job to create (draft) releases
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get version
+        id: get_version
+        # Extract version number from the VERSION file, save output for next step.
+        run: |
+          echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          gh release create "v${VERSION}" \
+              --repo="${GITHUB_REPOSITORY}" \
+              # Save the release as a draft instead of publishing it.
+              --draft \
+              # Target branch or full commit SHA (default [main branch]).
+              --target="${GITHUB_REF}" \
+              # Automatically generate title and notes for the release.
+              --generate-notes
