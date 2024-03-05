@@ -38,5 +38,8 @@ jobs:
               --draft \
               # Target branch or full commit SHA (default [main branch]).
               --target="${GITHUB_REF}" \
+              # Mark all v0.x releases as prereleases.
+              ${{ startsWith(steps.get_version.outputs.version, 'v0') && '--prerelease' || '' }} \
               # Automatically generate title and notes for the release.
               --generate-notes
+              
